@@ -5,12 +5,12 @@ import TopNav from "@/components/home/TopNav";
 import FinancialKPIs from "@/components/financials/FinancialKPIs";
 import FinancialOverviewChart from "@/components/financials/FinancialOverviewChart";
 import CashOutflowChart from "@/components/financials/CashOutflowChart";
+import Credit from "@/components/financials/Credit";
 
 export default function FinancialsPage() {
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
-    // For smooth page fade-in
     setMounted(true);
   }, []);
 
@@ -28,6 +28,11 @@ export default function FinancialsPage() {
         <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
           <FinancialOverviewChart />
           <CashOutflowChart />
+        </div>
+
+        {/* Credit Section */}
+        <div id="credit">
+          <Credit />
         </div>
       </div>
     </main>
