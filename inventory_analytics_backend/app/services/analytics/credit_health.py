@@ -1,15 +1,27 @@
 from sqlalchemy import func
 from sqlalchemy.orm import Session
-from app.database.models import StockReceipt, Supplier
-from datetime import datetime, timedelta
+from app.database.models import StockReceipt
+# from app.database.models import Supplier   # Disabled for demo
+from datetime import datetime
 
 class CreditHealthAnalyzer:
     
     @staticmethod
     def analyze_credit_health(db: Session):
-        """Analyze credit payables and supplier health"""
-        suppliers = db.query(Supplier).all()
-        
+        """Analyze credit payables and supplier health (demo-safe version)"""
+
+        # suppliers = db.query(Supplier).all()
+        suppliers = []  # disable supplier analytics for now
+
+        # If no suppliers, return safe empty response
+        if not suppliers:
+            return {
+                "total_payables": 0.0,
+                "supplier_count": 0,
+                "suppliers": [],
+                "message": "Supplier analytics disabled for demo."
+            }
+
         credit_analysis = []
         total_payables = 0.0
         
@@ -24,7 +36,6 @@ class CreditHealthAnalyzer:
             last_order = supplier_purchases.last_order
             days_since_order = (datetime.now() - last_order).days if last_order else None
             
-            # Assume 30-day payment terms
             payable_amount = total_purchases
             total_payables += payable_amount
             

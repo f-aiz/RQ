@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Float, DateTime, ForeignKey, Date
+from sqlalchemy import Column, Integer, String, Float, DateTime, ForeignKey
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship
 from datetime import datetime
@@ -40,19 +40,11 @@ class StockReceipt(Base):
     receipt_date = Column(DateTime, default=datetime.utcnow, index=True)
     sku_id = Column(String, ForeignKey("product_master.sku_id"), nullable=False)
     quantity_received = Column(Integer, nullable=False)
-    supplier_id = Column(Integer, ForeignKey("suppliers.supplier_id"), nullable=False)
+
+    # FIXED: supplier code is a STRING, not an integer FK
+    supplier_id = Column(String, nullable=False)
+
     unit_cost = Column(Float, nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow)
-    
-    product = relationship("ProductMaster", back_populates="stock_receipts")
-    supplier = relationship("Supplier", back_populates="stock_receipts")
 
-class Supplier(Base):
-    __tablename__ = "suppliers"
-    
-    supplier_id = Column(Integer, primary_key=True, index=True, autoincrement=True)
-    supplier_name = Column(String, nullable=False, unique=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-    
-    stock_receipts = relationship("StockReceipt", back_populates="supplier")
+    product = relationship("ProductMaster", back_populates="stock_receipts")
