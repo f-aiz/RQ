@@ -24,17 +24,20 @@ ChartJS.register(
   Filler
 );
 
-// Mock the API for a runnable file
-const mockApiCall = async (days: number) => {
-  // Simulate network delay
-  await new Promise(resolve => setTimeout(resolve, 500));
-  
-  // Total random outflow based on days (simulating a varying balance)
-  // Base daily outflow is 10,000, scaled by a random factor
-  const totalOutflow = days * 10000 * (1 + Math.random() * 0.5); 
-  
-  return { total_cash_outflow: totalOutflow };
+// --- STATIC DATA FROM PYTHON SCRIPT ---
+// We only have the 2-year total (100,269,119.48).
+// We will pro-rate this total to estimate totals for shorter periods.
+const TOTAL_OUTFLOW_2Y = 100269119.48;
+const DAILY_AVG_OUTFLOW = TOTAL_OUTFLOW_2Y / 730; // 730 days = 2 years
+
+const OUTFLOW_TOTALS: { [key: number]: number } = {
+  30: DAILY_AVG_OUTFLOW * 30, // ~4.12M
+  90: DAILY_AVG_OUTFLOW * 90, // ~12.36M
+  180: DAILY_AVG_OUTFLOW * 180, // ~24.72M
+  365: DAILY_AVG_OUTFLOW * 365, // ~50.13M
+  730: TOTAL_OUTFLOW_2Y, // ~100.27M
 };
+// --- END STATIC DATA ---
 
 const FILTERS = [
   { label: "30D", days: 30 },
@@ -46,8 +49,8 @@ const FILTERS = [
 
 // Define types for clarity
 interface CashFlowData {
-    date: string; 
-    outflow: number;
+  date: string;
+  outflow: number;
 }
 
 export default function CashOutflowTrendChart() {
@@ -60,32 +63,34 @@ export default function CashOutflowTrendChart() {
 
     async function loadTrend() {
       setLoading(true);
-      try {
-        // --- MOCK API CALL REPLACEMENT ---
-        const response = await mockApiCall(days);
-        // --- END MOCK ---
+      // Simulate network delay
+      await new Promise((resolve) => setTimeout(resolve, 300));
 
+      try {
         if (!isMounted) return;
 
-        const totalOutflow = response?.total_cash_outflow ?? 0;
+        // --- Use the estimated static data total for the selected period ---
+        const totalOutflow = OUTFLOW_TOTALS[days] ?? 0;
 
-        // SIMULATED TREND (smooth gradual curve)
+        // --- SIMULATED TREND (smooth gradual curve) ---
         const avgDaily = totalOutflow / days;
-        const generatedTrend: CashFlowData[] = Array.from({ length: days }).map((_, i) => {
-          const date = new Date();
-          // Adjust index to start 'days' ago and end on "today"
-          date.setDate(date.getDate() - (days - i - 1)); 
+        const generatedTrend: CashFlowData[] = Array.from({ length: days }).map(
+          (_, i) => {
+            const date = new Date();
+            date.setDate(date.getDate() - (days - i - 1));
 
-          // Simulate some variance and a gentle curve/trend (e.g., spending more recently)
-          const trendFactor = 0.5 + (i / days) * 1.5; // Starts low, ends high
-          const variance = 0.7 + Math.random() * 0.6; 
-          const dailyOutflow = Math.max(0, avgDaily * variance * trendFactor);
+            // Simulate some variance and a gentle curve/trend
+            const trendFactor = 0.5 + (i / days) * 1.5;
+            const variance = 0.7 + Math.random() * 0.6;
+            const dailyOutflow = Math.max(0, avgDaily * variance * trendFactor);
 
-          return {
-            date: date.toISOString().split("T")[0],
-            outflow: dailyOutflow,
-          };
-        });
+            return {
+              date: date.toISOString().split("T")[0],
+              outflow: dailyOutflow,
+            };
+          }
+        );
+        // --- END SIMULATION ---
 
         setTrend(generatedTrend);
       } catch (e) {
@@ -100,7 +105,7 @@ export default function CashOutflowTrendChart() {
     return () => {
       isMounted = false;
     };
-  }, [days]);
+  }, [days]); // Re-run when 'days' filter changes
 
   const chartData = {
     labels: trend.map((t) => t.date),
@@ -108,11 +113,11 @@ export default function CashOutflowTrendChart() {
       {
         label: "Cash Outflow",
         data: trend.map((t) => t.outflow),
-        // STYLING: Match the emerald green theme
-        borderColor: "rgb(52, 211, 153)", 
-        backgroundColor: "rgba(52, 211, 153, 0.25)",
+        // STYLING: Changed color to distinguish from Revenue
+        borderColor: "rgb(59, 130, 246)", // Blue
+        backgroundColor: "rgba(59, 130, 246, 0.25)",
         borderWidth: 2,
-        pointRadius: trend.length > 15 ? 0 : 3,
+        pointRadius: trend.length > 90 ? 0 : 3, // Hide points on long trends
         pointHoverRadius: 6,
         tension: 0.25,
         fill: true,
@@ -146,7 +151,9 @@ export default function CashOutflowTrendChart() {
           },
           label: (context: any) => {
             // STYLING: Use Rupee format
-            return `Outflow: ₹${context.parsed.y.toLocaleString("en-IN", { maximumFractionDigits: 2 })}`;
+            return `Outflow: ₹${context.parsed.y.toLocaleString("en-IN", {
+              maximumFractionDigits: 2,
+            })}`;
           },
         },
       },
@@ -159,13 +166,15 @@ export default function CashOutflowTrendChart() {
           color: "#a3a3a3",
           font: { size: 11 },
           maxTicksLimit: 6,
-          // FIX 1: Explicitly type the arguments and return value
-          callback: (value: number | string): string => { 
-            const numValue = typeof value === 'string' ? parseFloat(value) : value;
-            
+          callback: (value: number | string): string => {
+            const numValue =
+              typeof value === "string" ? parseFloat(value) : value;
+
             // STYLING: Use Rupee symbols
-            if (numValue >= 1000000) return `₹${(numValue / 1000000).toFixed(1)}M`;
-            if (numValue >= 1000) return `₹${(numValue / 1000).toFixed(1)}k`;
+            if (numValue >= 1000000)
+              return `₹${(numValue / 1000000).toFixed(1)}M`;
+            if (numValue >= 1000)
+              return `₹${(numValue / 1000).toFixed(1)}k`;
             return `₹${numValue.toFixed(0)}`;
           },
         },
@@ -182,11 +191,9 @@ export default function CashOutflowTrendChart() {
           maxRotation: 0,
           autoSkip: true,
           maxTicksLimit: 7, // STYLING: Prevent label overlap
-          // FIX 2 & 3: Explicitly type 'this' context and return value to satisfy TypeScript
           callback: function (this: any, val: number | string): string {
-            // 'this: any' allows access to internal Chart.js methods
             const label = this.getLabelForValue(val) as string;
-            const date: Date = new Date(label); // Explicitly type 'date' for clarity
+            const date: Date = new Date(label);
             return date.toLocaleDateString("en-IN", {
               month: "short",
               day: "numeric",
@@ -201,17 +208,19 @@ export default function CashOutflowTrendChart() {
     <div className="min-h-[400px] rounded-xl bg-gray-900/50 border border-gray-800 p-6 shadow-2xl h-full flex flex-col font-sans">
       {/* Title + Filters */}
       <div className="flex items-center justify-between mb-6">
-        <h2 className="text-xl font-bold text-white tracking-tight">Cash Outflow Trend</h2>
+        <h2 className="text-xl font-bold text-white tracking-tight">
+          Cash Outflow Trend
+        </h2>
 
         <div className="flex gap-2 p-1 rounded-xl bg-gray-800">
           {FILTERS.map((f) => (
             <button
               key={f.days}
               onClick={() => setDays(f.days)}
-              // STYLING: Match the emerald green buttons
-              className={`px-3 py-1.5 rounded-lg text-sm transition font-medium focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 focus:ring-offset-gray-900 ${
+              // STYLING: Changed to blue to match chart
+              className={`px-3 py-1.5 rounded-lg text-sm transition font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-gray-900 ${
                 days === f.days
-                  ? "bg-emerald-500 text-gray-900 shadow-md"
+                  ? "bg-blue-500 text-white shadow-md"
                   : "text-gray-300 hover:bg-gray-700/50"
               }`}
             >
@@ -224,10 +233,26 @@ export default function CashOutflowTrendChart() {
       {/* Chart Container */}
       <div className="grow h-[300px] w-full relative">
         {loading ? (
-          <div className="absolute inset-0 flex items-center justify-center text-emerald-500/60 text-lg font-medium">
-            <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-emerald-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+          <div className="absolute inset-0 flex items-center justify-center text-blue-500/60 text-lg font-medium">
+            <svg
+              className="animate-spin -ml-1 mr-3 h-5 w-5 text-blue-500"
+              xmlns="http://www.w3.org/2000/svg"
+              fill="none"
+              viewBox="0 0 24 24"
+            >
+              <circle
+                className="opacity-25"
+                cx="12"
+                cy="12"
+                r="10"
+                stroke="currentColor"
+                strokeWidth="4"
+              ></circle>
+              <path
+                className="opacity-75"
+                fill="currentColor"
+                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+              ></path>
             </svg>
             Loading data...
           </div>

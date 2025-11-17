@@ -2,9 +2,7 @@
 
 import { useState } from "react";
 import TopNav from "@/components/home/TopNav";
-import ProductSearchBar from "@/components/products/ProductSearchBar";
-import ProductSearchList from "@/components/products/ProductSearchList";
-import ProductDetailsPanel from "@/components/products/ProductDetailsPanel";
+
 import ProductAgeAnalysis from "@/components/products/ProductAgeAnalysis";
 
 export default function ProductsPage() {
@@ -22,22 +20,13 @@ export default function ProductsPage() {
         <ProductAgeAnalysis />
 
 
-        {/* SEARCH BAR */}
-        <ProductSearchBar onResults={setResults} />
+       
+        
 
-        {/* SEARCH RESULTS DROPDOWN */}
-        {results.length > 0 && !selectedProduct && (
-          <ProductSearchList
-            results={results}
-            onSelect={setSelectedProduct}
-          />
-        )}
-
-        {/* PRODUCT DETAILS */}
-        {selectedProduct && (
-          <ProductDetailsPanel product={selectedProduct} />
-        )}
-
+       
+          
+       
+        
       </div>
     </main>
   );

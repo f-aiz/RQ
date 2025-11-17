@@ -1,0 +1,7 @@
+{
+    "forecast_start_date": "2024-05-07",
+    "forecast_end_date": "2024-05-13",
+    "forecast_horizon_days": 7,
+    "model_description": "LightGBM regressor for SKU-level quantity and sales forecasting.",
+    "generated_date": "2025-11-17 08:45:43"
+}

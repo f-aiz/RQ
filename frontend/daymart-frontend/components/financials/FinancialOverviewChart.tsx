@@ -26,35 +26,20 @@ ChartJS.register(
 
 // Define types for clarity
 interface RevenueData {
-    date: string; 
-    revenue: number;
+  date: string;
+  revenue: number;
 }
 
-// --- MOCK API IMPLEMENTATION ---
-const mockApiCall = async (days: number): Promise<RevenueData[]> => {
-  // Simulate network delay
-  await new Promise(resolve => setTimeout(resolve, 500));
-  
-  const baseDailyRevenue = 15000;
-  
-  const generatedTrend: RevenueData[] = Array.from({ length: days }).map((_, i) => {
-    const date = new Date();
-    // Adjust index to start 'days' ago and end on "today"
-    date.setDate(date.getDate() - (days - i - 1)); 
-
-    // Simulate a revenue trend with some daily variance
-    const trendFactor = 0.8 + (i / days) * 0.4; // Gentle upward trend
-    const variance = 0.9 + Math.random() * 0.2; 
-    const dailyRevenue = Math.max(1000, baseDailyRevenue * variance * trendFactor);
-
-    return {
-      date: date.toISOString().split("T")[0],
-      revenue: dailyRevenue,
-    };
-  });
-  
-  return generatedTrend;
+// --- STATIC DATA FROM PYTHON SCRIPT ---
+const REVENUE_TOTALS: { [key: number]: number } = {
+  30: 3824831.22,
+  90: 11579673.12,
+  180: 27204031.09,
+  365: 63319897.56,
+  730: 133355191.09,
 };
+
+// --- END STATIC DATA ---
 
 const FILTERS = [
   { label: "30D", days: 30 },
@@ -64,7 +49,7 @@ const FILTERS = [
   { label: "2Y", days: 730 },
 ];
 
-export default function FinancialOverviewChart() {
+export default function RevenueTrendChart() {
   const [days, setDays] = useState(30);
   const [loading, setLoading] = useState(true);
   const [trend, setTrend] = useState<RevenueData[]>([]);
@@ -74,21 +59,37 @@ export default function FinancialOverviewChart() {
 
     async function loadTrend() {
       setLoading(true);
-      try {
-        // --- MOCK API CALL REPLACEMENT ---
-        const rawData = await mockApiCall(days);
-        // --- END MOCK ---
+      // Simulate network delay
+      await new Promise((resolve) => setTimeout(resolve, 250));
 
+      try {
         if (!isMounted) return;
 
-        // The mock returns the correctly structured array, but we keep the mapping logic 
-        // for robustness against real API variations.
-        const formatted = rawData.map((item: any) => ({
-          date: item.date,
-          revenue: Number(item.revenue || 0),
-        }));
+        // --- Use the static data total for the selected period ---
+        const totalRevenue = REVENUE_TOTALS[days] ?? 0;
 
-        setTrend(formatted);
+        // --- SIMULATED TREND (copied from your CashOutflowTrendChart) ---
+        // This creates a plausible-looking graph based on the real total
+        const avgDaily = totalRevenue / days;
+        const generatedTrend: RevenueData[] = Array.from({ length: days }).map(
+          (_, i) => {
+            const date = new Date();
+            date.setDate(date.getDate() - (days - i - 1));
+
+            // Simulate some variance and a gentle curve/trend
+            const trendFactor = 0.5 + (i / days) * 1.5;
+            const variance = 0.7 + Math.random() * 0.6;
+            const dailyRevenue = Math.max(0, avgDaily * variance * trendFactor);
+
+            return {
+              date: date.toISOString().split("T")[0],
+              revenue: dailyRevenue,
+            };
+          }
+        );
+        // --- END SIMULATION ---
+
+        setTrend(generatedTrend);
       } catch (e) {
         console.error("Trend fetch error:", e);
         if (isMounted) setTrend([]);
@@ -102,7 +103,7 @@ export default function FinancialOverviewChart() {
     return () => {
       isMounted = false;
     };
-  }, [days]);
+  }, [days]); // Re-run when 'days' filter changes
 
   const chartData = {
     labels: trend.map((t) => t.date),
@@ -113,7 +114,7 @@ export default function FinancialOverviewChart() {
         borderColor: "rgb(52, 211, 153)", // Emerald Green
         backgroundColor: "rgba(52, 211, 153, 0.25)", // Emerald Fill
         borderWidth: 2,
-        pointRadius: trend.length > 15 ? 0 : 3,
+        pointRadius: trend.length > 90 ? 0 : 3, // Hide points on long trends
         pointHoverRadius: 6,
         tension: 0.25,
         fill: true,
@@ -147,7 +148,9 @@ export default function FinancialOverviewChart() {
           },
           label: (context: any) => {
             // Format as Rupee
-            return `Revenue: ₹${context.parsed.y.toLocaleString("en-IN", { maximumFractionDigits: 2 })}`;
+            return `Revenue: ₹${context.parsed.y.toLocaleString("en-IN", {
+              maximumFractionDigits: 2,
+            })}`;
           },
         },
       },
@@ -160,12 +163,14 @@ export default function FinancialOverviewChart() {
           color: "#a3a3a3",
           font: { size: 11 },
           maxTicksLimit: 6,
-          // FIX 1: Explicitly type the arguments and return value
           callback: (value: number | string): string => {
-            const numValue = typeof value === 'string' ? parseFloat(value) : value;
-             // Use Rupee symbol
-            if (numValue >= 1000000) return `₹${(numValue / 1000000).toFixed(1)}M`;
-            if (numValue >= 1000) return `₹${(numValue / 1000).toFixed(1)}k`;
+            const numValue =
+              typeof value === "string" ? parseFloat(value) : value;
+            // Use Rupee symbol
+            if (numValue >= 1000000)
+              return `₹${(numValue / 1000000).toFixed(1)}M`;
+            if (numValue >= 1000)
+              return `₹${(numValue / 1000).toFixed(1)}k`;
             return `₹${numValue.toFixed(0)}`;
           },
         },
@@ -182,7 +187,6 @@ export default function FinancialOverviewChart() {
           maxRotation: 0,
           autoSkip: true,
           maxTicksLimit: 7,
-          // FIX 2 & 3: Explicitly type 'this' context, arguments, and return value
           callback: function (this: any, val: number | string): string {
             const label = this.getLabelForValue(val) as string;
             const date: Date = new Date(label);
@@ -200,7 +204,9 @@ export default function FinancialOverviewChart() {
     <div className="min-h-[400px] rounded-xl bg-gray-900/50 border border-gray-800 p-6 shadow-2xl h-full flex flex-col font-sans">
       {/* Title Row */}
       <div className="flex items-center justify-between mb-6">
-        <h2 className="text-xl font-bold text-white tracking-tight">Revenue Trend Overview</h2>
+        <h2 className="text-xl font-bold text-white tracking-tight">
+          Revenue Trend Overview
+        </h2>
 
         {/* Filters */}
         <div className="flex gap-2 p-1 rounded-xl bg-gray-800">
@@ -224,9 +230,25 @@ export default function FinancialOverviewChart() {
       <div className="flex-grow h-[300px] w-full relative">
         {loading ? (
           <div className="absolute inset-0 flex items-center justify-center text-emerald-500/60 text-lg font-medium">
-            <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-emerald-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            <svg
+              className="animate-spin -ml-1 mr-3 h-5 w-5 text-emerald-500"
+              xmlns="http://www.w3.org/2000/svg"
+              fill="none"
+              viewBox="0 0 24 24"
+            >
+              <circle
+                className="opacity-25"
+                cx="12"
+                cy="12"
+                r="10"
+                stroke="currentColor"
+                strokeWidth="4"
+              ></circle>
+              <path
+                className="opacity-75"
+                fill="currentColor"
+                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+              ></path>
             </svg>
             Loading data...
           </div>

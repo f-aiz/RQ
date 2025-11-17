@@ -4,6 +4,13 @@ import pandas as pd
 from sqlalchemy.orm import Session
 
 # ---------------------------------------------------
+# 1. FORCE LOAD .ENV FILE (Fixes the SQLite bug)
+# ---------------------------------------------------
+from dotenv import load_dotenv
+# Load the .env file from the project root (one level up)
+load_dotenv(os.path.join(os.path.dirname(__file__), "..", ".env"))
+
+# ---------------------------------------------------
 # Ensure project root is in PYTHONPATH
 # ---------------------------------------------------
 CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -14,8 +21,8 @@ if PROJECT_ROOT not in sys.path:
 # ---------------------------------------------------
 # Import DB Session + Models
 # ---------------------------------------------------
-from app.database.connection import SessionLocal, init_db
-from app.database.models import ProductMaster, StockReceipt, SalesTransaction
+from app.database.connection import SessionLocal, init_db, engine
+from app.database.models import ProductMaster, StockReceipt, SalesTransaction, Base
 
 
 # ===================================================
@@ -34,7 +41,6 @@ PRODUCT_MAPPING = {
 
 def load_product_master():
     csv_path = os.path.join(PROJECT_ROOT, "data", "clean", "product_master.csv")
-
     if not os.path.exists(csv_path):
         raise FileNotFoundError(f"❌ Missing cleaned file: {csv_path}")
 
@@ -42,6 +48,13 @@ def load_product_master():
     df.columns = df.columns.str.strip()
     df = df.rename(columns=PRODUCT_MAPPING)
     df = df[list(PRODUCT_MAPPING.values())]
+
+    # --- FIX 2: REMOVE DUPLICATES IN CSV ---
+    # If SKU '123' is in the CSV twice, keep the last one
+    initial_count = len(df)
+    df = df.drop_duplicates(subset=["sku_id"], keep="last")
+    print(f"   (Removed {initial_count - len(df)} duplicate rows from CSV)")
+    # ---------------------------------------
 
     df["unit_cost_price"] = pd.to_numeric(df["unit_cost_price"], errors="coerce").fillna(0)
     df["unit_selling_price"] = pd.to_numeric(df["unit_selling_price"], errors="coerce").fillna(0)
@@ -59,7 +72,7 @@ def load_product_master():
             unit_cost_price=float(row["unit_cost_price"]),
             unit_selling_price=float(row["unit_selling_price"])
         )
-        session.merge(product)  # UPSERT
+        session.merge(product) 
         inserted += 1
 
     session.commit()
@@ -81,7 +94,6 @@ STOCK_MAPPING = {
 
 def load_stock_receipts():
     csv_path = os.path.join(PROJECT_ROOT, "data", "clean", "stock_receipts.csv")
-
     if not os.path.exists(csv_path):
         raise FileNotFoundError(f"❌ Missing cleaned file: {csv_path}")
 
@@ -92,7 +104,6 @@ def load_stock_receipts():
 
     df["quantity_received"] = pd.to_numeric(df["quantity_received"], errors="coerce").fillna(0)
     df["unit_cost"] = pd.to_numeric(df["unit_cost"], errors="coerce").fillna(0)
-
     df["receipt_date"] = pd.to_datetime(df["receipt_date"], errors="coerce")
 
     session: Session = SessionLocal()
@@ -123,12 +134,10 @@ SALES_MAPPING = {
     "PTC": "sku_id",
     "quantity": "quantity_sold",
     "sale_price": "sale_price"
-    # variable_weight ignored
 }
 
 def load_sales_transactions():
     csv_path = os.path.join(PROJECT_ROOT, "data", "clean", "sales_transactions.csv")
-
     if not os.path.exists(csv_path):
         raise FileNotFoundError(f"❌ Missing cleaned file: {csv_path}")
 
@@ -139,7 +148,6 @@ def load_sales_transactions():
 
     df["quantity_sold"] = pd.to_numeric(df["quantity_sold"], errors="coerce").fillna(0)
     df["sale_price"] = pd.to_numeric(df["sale_price"], errors="coerce").fillna(0)
-
     df["transaction_date"] = pd.to_datetime(df["transaction_date"], errors="coerce")
 
     session: Session = SessionLocal()
@@ -165,7 +173,22 @@ def load_sales_transactions():
 # ===================================================
 
 if __name__ == "__main__":
-    print("🚀 Initializing database...")
+    print("🚀 Initializing database process...")
+
+    # Check connection first
+    url = str(engine.url)
+    if "sqlite" in url:
+        print("❌ ERROR: Still connecting to SQLite! Check your .env file.")
+        sys.exit(1)
+    else:
+        print(f"✅ Correctly connected to: {url.split('@')[-1]}") # Shows host/db only (hides password)
+
+    # NUCLEAR RESET
+    print("⚠️  DROPPING EXISTING TABLES (Clean Slate Protocol)...")
+    Base.metadata.drop_all(bind=engine)
+    print("✅ Tables dropped.")
+
+    print("🛠️  Creating fresh tables...")
     init_db()
 
     print("📦 Loading product master...")

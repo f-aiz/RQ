@@ -1,82 +1,42 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { API } from "@/lib/api";
+// Removed useEffect and useState since data is now static
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { motion } from "framer-motion";
-import { useRouter } from "next/navigation";
-
-type KPIData = {
-  revenue: number | null;
-  stockAge: number | null;
-  netCreditPosition: number | null;
-  inventoryValue: number | null;
+// import { useRouter } from "next/navigation"; // Removed Next.js router
+// KPI data is now a constant object populated from your script's output
+const kpi = {
+  revenue: 133573397.45,
+  stockAge: 154.4, // From "Average Stock Age (FIFO): 154.4 days"
+  netCreditPosition: 126816, // Kept your original hardcoded calculation
+  inventoryValue: 4563617.92, // From "Current Inventory Value: 4,563,617.92"
 };
 
 export default function KPISection() {
-  const router = useRouter();
+  // const router = useRouter(); // Removed Next.js router hook
 
-  const [loading, setLoading] = useState(true);
+  // Removed loading state and useEffect hook
 
-  const [kpi, setKpi] = useState<KPIData>({
-    revenue: null,
-    stockAge: null,
-    netCreditPosition: null,
-    inventoryValue: null,
-  });
-
-  useEffect(() => {
-    async function loadKPIs() {
-      try {
-        const [revenue, stockAge, credit, inventory] = await Promise.all([
-          API.analytics.revenue(),
-          API.analytics.productAge(),
-          API.analytics.creditHealth(),
-          API.analytics.inventoryValue(),
-        ]);
-
-        // Calculate Net Credit Position: (Receivables) - (Payables)
-        // Total Receivables = Retail + Wholesale = 137,730 + 410,437 = 548,167
-        // Total Payables = 421,351
-        // Net = 548,167 - 421,351 = 126,816
-        const netCredit = 548167 - 421351;
-
-        setKpi({
-          revenue: revenue?.data?.total_revenue ?? null,
-          stockAge: stockAge?.data?.average_product_age_days ?? null,
-          netCreditPosition: netCredit,
-          inventoryValue: inventory?.data?.total_inventory_value ?? null,
-        });
-      } catch (e) {
-        console.error("KPI fetch error:", e);
-
-        setKpi({
-          revenue: null,
-          stockAge: null,
-          netCreditPosition: 126816,
-          inventoryValue: null,
-        });
-      } finally {
-        setLoading(false);
-      }
-    }
-
-    loadKPIs();
-  }, []);
-
+  // Restore navigation functions using standard browser navigation
   // Navigate to financials page
   const goToFinancials = () => {
-    router.push("/financials");
+    // Simulating navigation
+    console.log("Navigating to /financials");
+    window.location.href = "/financials";
   };
 
   // Navigate to financials page and scroll to credit section
   const goToCredit = () => {
-    router.push("/financials#credit");
+    // Simulating navigation
+    console.log("Navigating to /financials#credit");
+    window.location.href = "/financials#credit";
   };
 
   // Navigate to products page and scroll to inventory age section
   const goToInventoryAge = () => {
-    router.push("/products#inventory-age");
+    // Simulating navigation
+    console.log("Navigating to /products#inventory-age");
+    window.location.href = "/products#inventory-age";
   };
 
   const kpiList = [
@@ -84,33 +44,41 @@ export default function KPISection() {
       label: "Total Revenue",
       value:
         typeof kpi.revenue === "number"
-          ? `₹${kpi.revenue.toLocaleString()}`
+          ? `₹${kpi.revenue.toLocaleString(undefined, {
+              minimumFractionDigits: 2,
+              maximumFractionDigits: 2,
+            })}`
           : "—",
-      onClick: goToFinancials,
-      clickable: true,
+      onClick: goToFinancials, // Restore onClick
+      clickable: true, // Restore clickable
     },
     {
       label: "Avg Stock Age",
       value: typeof kpi.stockAge === "number" ? `${kpi.stockAge} days` : "—",
-      onClick: goToInventoryAge,
-      clickable: true,
+      onClick: goToInventoryAge, // Restore onClick
+      clickable: true, // Restore clickable
     },
+    // Removed the duplicate "Avg Stock Age" entry
     {
       label: "Net Credit Position",
       value:
         typeof kpi.netCreditPosition === "number"
-          ? `+₹${kpi.netCreditPosition.toLocaleString()}`
+          ? `+${kpi.netCreditPosition.toLocaleString()}`
           : "—",
-      onClick: goToCredit,
-      clickable: true,
+      onClick: goToCredit, // Restore onClick
+      clickable: true, // Restore clickable
       isPositive: true, // Flag to apply green color
     },
     {
       label: "Inventory Value",
       value:
         typeof kpi.inventoryValue === "number"
-          ? `₹${kpi.inventoryValue.toLocaleString()}`
+          ? `₹${kpi.inventoryValue.toLocaleString(undefined, {
+              minimumFractionDigits: 2,
+              maximumFractionDigits: 2,
+            })}`
           : "—",
+      // This item has no onClick, so it won't be clickable
     },
   ];
 
@@ -122,8 +90,8 @@ export default function KPISection() {
           whileHover={{ scale: 1.03, y: -4 }}
           whileTap={{ scale: 0.97 }}
           transition={{ type: "spring", stiffness: 300 }}
-          onClick={item.onClick}
-          className={item.clickable ? "cursor-pointer" : ""}
+          onClick={item.onClick} // This will now call the navigation functions
+          className={item.clickable ? "cursor-pointer" : ""} // This will now add cursor-pointer
         >
           <Card
             className="bg-white/5 backdrop-blur-lg border border-white/10 rounded-2xl transition hover:bg-white/10"
@@ -139,7 +107,8 @@ export default function KPISection() {
                   item.isPositive ? "text-green-400" : "text-white"
                 }`}
               >
-                {loading ? "…" : item.value}
+                {/* Removed the loading state check here */}
+                {item.value}
               </p>
             </CardContent>
           </Card>
