@@ -17,30 +17,29 @@ export default function FinancialKPIs() {
   useEffect(() => {
     async function loadKPIs() {
       try {
-        const [revenue, inventory, profit, priceVar, cashFlow] =
+        const [revenueRes, inventoryRes, profitRes, priceVarRes, cashFlowRes] =
           await Promise.all([
             API.analytics.revenue(),
             API.analytics.inventoryValue(),
-            API.analytics.profit(), // this exists (profit_calculator)
+            API.analytics.profit(),
             API.analytics.priceVariance(),
             API.analytics.cashFlow(),
           ]);
 
         setKpi({
-          totalRevenue: revenue?.data?.total_revenue ?? null,
-          inventoryValue:
-            inventory?.data?.total_inventory_value ?? null,
+          totalRevenue: revenueRes?.data?.total_revenue ?? null,
+          inventoryValue: inventoryRes?.data?.total_inventory_value ?? null,
           totalProfit:
-            profit?.data?.total_profit ??
-            profit?.data?.profit ??
+            profitRes?.data?.total_profit ??
+            profitRes?.data?.profit ??
             null,
-          priceVariance:
-            priceVar?.data?.purchase_price_variance ?? null,
-          cashFlow:
-            cashFlow?.data?.inventory_vs_cashflow ?? null,
+          priceVariance: Array.isArray(priceVarRes?.data)
+            ? priceVarRes.data[0]?.variance_percentage ?? null
+            : null,
+          cashFlow: cashFlowRes?.data?.net_cash_flow ?? null,
         });
       } catch (err) {
-        console.error("Financial KPIs error:", err);
+        console.error("Financial KPIs Error:", err);
         setKpi({
           totalRevenue: null,
           inventoryValue: null,
@@ -82,7 +81,7 @@ export default function FinancialKPIs() {
       label: "Purchase Price Variance",
       value:
         kpi.priceVariance !== null
-          ? `${kpi.priceVariance}%`
+          ? `${kpi.priceVariance.toFixed(2)}%`
           : "—",
     },
     {
