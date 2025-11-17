@@ -74,6 +74,11 @@ export default function KPISection() {
     router.push("/financials#credit");
   };
 
+  // Navigate to products page and scroll to inventory age section
+  const goToInventoryAge = () => {
+    router.push("/products#inventory-age");
+  };
+
   const kpiList = [
     {
       label: "Total Revenue",
@@ -87,6 +92,8 @@ export default function KPISection() {
     {
       label: "Avg Stock Age",
       value: typeof kpi.stockAge === "number" ? `${kpi.stockAge} days` : "—",
+      onClick: goToInventoryAge,
+      clickable: true,
     },
     {
       label: "Net Credit Position",

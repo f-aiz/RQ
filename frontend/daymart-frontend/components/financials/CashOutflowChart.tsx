@@ -222,7 +222,7 @@ export default function CashOutflowTrendChart() {
       </div>
 
       {/* Chart Container */}
-      <div className="flex-grow h-[300px] w-full relative">
+      <div className="grow h-[300px] w-full relative">
         {loading ? (
           <div className="absolute inset-0 flex items-center justify-center text-emerald-500/60 text-lg font-medium">
             <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-emerald-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
